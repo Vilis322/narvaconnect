@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Build
+dist/
+build/
+
+# Data (raw student data - private)
+data/raw/
+data/processed/
+*.xlsx
+*.csv
+
+# Models & adapters
+data/adapters/
+*.gguf
+*.safetensors
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# PM2
+ecosystem.config.js
