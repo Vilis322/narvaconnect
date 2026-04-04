@@ -135,18 +135,18 @@ cd data && python scripts/import_db.py --input processed/schedule.json
 - Model: MLX + Llama 3.1 8B, LoRA fine-tuned on university data
 - **System prompt includes current date** (`datetime.now()`) — model always knows "today"
 - Calculates remaining study hours: `(EAP × 26) - completed_hours`
-- Knows weekly schedule → "У тебя сегодня Data Science в 10:00, ауд. 215"
-- Reads deadline proximity → "До экзамена по SE осталось 5 дней"
+- Knows weekly schedule → "You have Data Science today at 10:00, room 215"
+- Reads deadline proximity → "SE exam is in 5 days"
 - Trained on: ÕIS descriptions, Moodle assignments, lecture materials, past notebooks
 
 ### Data sources for training
 ```
 university/year3/semester2/{subject}/
-├── ois2/          ← описание из ÕIS + понедельное расписание
-├── moodle/        ← задания, материалы из Moodle
-├── code/          ← notebooks, решения
-├── lectures/      ← лекции
-└── materials/     ← учебники
+├── ois2/          ← course description from ÕIS + weekly schedule
+├── moodle/        ← assignments, materials from Moodle
+├── code/          ← notebooks, solutions
+├── lectures/      ← lecture materials
+└── materials/     ← textbooks
 ```
 
 Feedback/ folders ignored — not useful for training.
@@ -162,8 +162,8 @@ Feedback/ folders ignored — not useful for training.
 - **Backend:** PM2 cluster mode (1 instance for now)
 - **Frontend:** static build served by nginx
 - **AI:** MLX on Mac (dev) / proxied endpoint (prod)
-- **Port:** 3001 (не конфликтует с ai-opsctl на 3000)
-- **DB port:** 5434 (не конфликтует с ai-opsctl на 5433)
+- **Port:** 3001
+- **DB port:** 5434
 
 ## Future
 
