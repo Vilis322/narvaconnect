@@ -1,0 +1,11 @@
+# Cloudflare Tunnel config — routes narvaconnect.app to local Mac
+# Copy to ~/.cloudflared/config.yml and update paths/IDs
+# Run: cloudflared tunnel run narvaconnect-mlx
+
+tunnel: 04d8d836-a026-4550-8a70-25e2ae586643
+credentials-file: /Users/vilis/.cloudflared/04d8d836-a026-4550-8a70-25e2ae586643.json
+
+ingress:
+  - hostname: narvaconnect.app
+    service: http://localhost:3000
+  - service: http_status:404
