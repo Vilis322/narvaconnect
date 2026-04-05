@@ -7,7 +7,8 @@ set -e
 
 APP_DIR="/var/www/narvaconnect"
 DOMAIN="narvaconnect.app"
-REPO="https://github.com/Vilis322/narvaconnect.git"
+REPO="git@github.com:Vilis322/narvaconnect.git"
+BRANCH="${BRANCH:-feat/ui-backend-rag}"
 
 echo "=== NarvaConnect Initial Setup ==="
 echo "Target: Ubuntu 22.04, domain: ${DOMAIN}"
@@ -38,11 +39,11 @@ echo "[1/7] Done"
 # === 2. Clone repo ===
 echo "[2/7] Cloning repo..."
 if [ -d "${APP_DIR}/.git" ]; then
-    cd "${APP_DIR}" && git fetch origin && git reset --hard origin/main
+    cd "${APP_DIR}" && git fetch origin && git checkout "${BRANCH}" && git reset --hard "origin/${BRANCH}"
 else
     mkdir -p "${APP_DIR}"
     git clone "${REPO}" "${APP_DIR}"
-    cd "${APP_DIR}"
+    cd "${APP_DIR}" && git checkout "${BRANCH}"
 fi
 echo "[2/7] Done"
 
