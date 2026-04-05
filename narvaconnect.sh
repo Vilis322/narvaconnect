@@ -1,116 +1,128 @@
 #!/bin/bash
-# narvaconnect.sh — deployment & management commands
+# narvaconnect.sh — run local or deploy to VPS
 # Usage: ./narvaconnect.sh <command>
 
 set -e
 
-SSH_HOST="${SSH_HOST:-root@64.111.93.12}"
-APP_DIR="/var/www/narvaconnect"
-PM2_NAME="narvaconnect-api"
 DOMAIN="narvaconnect.app"
+TUNNEL_NAME="narvaconnect-mlx"
 
 case "$1" in
 
-  # === LOCAL DEV ===
-  dev-backend)
-    cd backend && python server.py
-    ;;
-  dev-frontend)
-    cd frontend && npm run dev
-    ;;
-  test)
-    ruff check backend/ data/scripts/
-    cd frontend && npx tsc --noEmit
-    ;;
-  open)
-    open "https://${DOMAIN}"
+  # === Build frontend for production ===
+  build)
+    cd frontend && npm run build && cd ..
+    echo "Frontend built to frontend/dist/"
     ;;
 
-  # === MLX LOCAL (Apple Silicon only) ===
-  mlx-server)
+  # === Start FastAPI backend (serves API + static frontend) ===
+  backend)
+    source .venv/bin/activate
+    python backend/server.py
+    ;;
+
+  # === Start MLX inference server (Apple Silicon only) ===
+  mlx)
     source .venv/bin/activate
     python -m mlx_lm server \
       --model mlx-community/Meta-Llama-3.1-8B-Instruct-4bit \
       --port 8080
     ;;
 
-  # === Cloudflare Tunnel (exposes local MLX server to narvaconnect.app) ===
+  # === Start Cloudflare Tunnel (narvaconnect.app -> localhost:3000) ===
   tunnel)
-    cloudflared tunnel run narvaconnect-mlx
+    cloudflared tunnel run "${TUNNEL_NAME}"
     ;;
 
-  # === Start MLX + Tunnel together ===
-  ai-up)
-    echo "Starting MLX server and Cloudflare Tunnel..."
+  # === Start EVERYTHING (backend + MLX + tunnel) ===
+  up)
+    echo "Starting NarvaConnect stack..."
     source .venv/bin/activate
+
+    if [ ! -d "frontend/dist" ]; then
+      echo "Building frontend..."
+      cd frontend && npm run build && cd ..
+    fi
+
     python -m mlx_lm server \
       --model mlx-community/Meta-Llama-3.1-8B-Instruct-4bit \
       --port 8080 &
     MLX_PID=$!
+    echo "MLX server: PID $MLX_PID (port 8080)"
     sleep 3
-    cloudflared tunnel run narvaconnect-mlx &
+
+    python backend/server.py &
+    BACKEND_PID=$!
+    echo "Backend: PID $BACKEND_PID (port 3000)"
+    sleep 2
+
+    cloudflared tunnel run "${TUNNEL_NAME}" &
     TUNNEL_PID=$!
-    echo "MLX: PID $MLX_PID | Tunnel: PID $TUNNEL_PID"
-    echo "Ctrl+C to stop both"
-    trap "kill $MLX_PID $TUNNEL_PID 2>/dev/null" EXIT
+    echo "Tunnel: PID $TUNNEL_PID"
+    echo ""
+    echo "=== NarvaConnect is live at https://${DOMAIN} ==="
+    echo "Ctrl+C to stop all services"
+
+    trap "kill $MLX_PID $BACKEND_PID $TUNNEL_PID 2>/dev/null; exit" INT TERM
     wait
     ;;
 
-  # === DEPLOY ===
-  deploy)
-    echo "Deploying to ${SSH_HOST}..."
-    ssh "${SSH_HOST}" "cd ${APP_DIR} && git pull origin main && cd backend && pip install -q -r requirements.txt && cd ../frontend && npm ci && npm run build && pm2 reload ${PM2_NAME}"
-    echo "Deploy complete."
+  # === Dev mode (hot reload frontend) ===
+  dev-backend)
+    source .venv/bin/activate
+    python backend/server.py
+    ;;
+  dev-frontend)
+    cd frontend && npm run dev
     ;;
 
-  # === SERVER MANAGEMENT ===
-  logs)
-    ssh "${SSH_HOST}" "pm2 logs ${PM2_NAME} --lines ${2:-50}"
-    ;;
-  status)
-    ssh "${SSH_HOST}" "pm2 status ${PM2_NAME}"
-    ;;
-  restart)
-    ssh "${SSH_HOST}" "pm2 reload ${PM2_NAME}"
-    ;;
-  stop)
-    ssh "${SSH_HOST}" "pm2 stop ${PM2_NAME}"
+  # === Quality ===
+  test)
+    source .venv/bin/activate
+    ruff check backend/ data/scripts/
+    cd frontend && npx tsc --noEmit
     ;;
 
-  # === FIRST DEPLOY (run once on fresh server) ===
-  # setup)
-  #   echo "Initial setup on ${SSH_HOST}..."
-  #   ssh "${SSH_HOST}" "
-  #     apt update && apt install -y python3.13 python3.13-venv nodejs npm nginx &&
-  #     npm install -g pm2 &&
-  #     mkdir -p ${APP_DIR} &&
-  #     cd ${APP_DIR} &&
-  #     git clone https://github.com/Vilis322/narvaconnect.git . &&
-  #     python3 -m venv .venv && source .venv/bin/activate && pip install -r backend/requirements.txt &&
-  #     cd frontend && npm ci && npm run build && cd .. &&
-  #     pm2 start backend/server.py --name ${PM2_NAME} --interpreter .venv/bin/python &&
-  #     pm2 save
-  #   "
-  #   echo "Setup complete. Configure nginx: nginx/${DOMAIN}.conf.example"
+  # === Open ===
+  open)
+    open "https://${DOMAIN}"
+    ;;
+
+  # === VPS deployment (for students to learn) ===
+  # Set SSH_HOST env var: SSH_HOST=root@YOUR_IP ./narvaconnect.sh <cmd>
+  #
+  # deploy)
+  #   ssh "${SSH_HOST}" "cd /var/www/narvaconnect && git pull origin main && source .venv/bin/activate && pip install -q -r backend/requirements.txt && cd frontend && npm ci && npm run build && pm2 reload narvaconnect-api"
+  #   ;;
+  # logs)
+  #   ssh "${SSH_HOST}" "pm2 logs narvaconnect-api --lines ${2:-50}"
+  #   ;;
+  # status)
+  #   ssh "${SSH_HOST}" "pm2 status narvaconnect-api"
+  #   ;;
+  # restart)
+  #   ssh "${SSH_HOST}" "pm2 reload narvaconnect-api"
   #   ;;
 
   *)
     echo "narvaconnect.sh — ${DOMAIN}"
     echo ""
-    echo "Local dev:"
-    echo "  dev-backend    Start FastAPI (:3000)"
-    echo "  dev-frontend   Start Vite (:5173)"
-    echo "  mlx-server     Start MLX inference server (Apple Silicon only, :8080)"
+    echo "Production (all via Cloudflare Tunnel):"
+    echo "  up             Start MLX + backend + tunnel (one command)"
+    echo "  build          Build frontend static files"
+    echo "  backend        Start FastAPI (serves API + frontend, :3000)"
+    echo "  mlx            Start MLX inference server (:8080)"
+    echo "  tunnel         Start Cloudflare Tunnel"
+    echo "  open           Open ${DOMAIN} in browser"
+    echo ""
+    echo "Development (hot reload):"
+    echo "  dev-backend    FastAPI (:3000)"
+    echo "  dev-frontend   Vite dev server (:5173)"
+    echo ""
+    echo "Quality:"
     echo "  test           Run lints"
-    echo "  open           Open narvaconnect.app in browser"
     echo ""
-    echo "Deploy:  SSH_HOST=root@64.111.93.12 ./narvaconnect.sh <command>"
-    echo "  deploy         Pull, build, reload PM2"
-    echo ""
-    echo "Server:"
-    echo "  logs [N]       PM2 logs (default 50)"
-    echo "  status         PM2 status"
-    echo "  restart        PM2 reload"
-    echo "  stop           PM2 stop"
+    echo "VPS deployment (commented — see script for students):"
+    echo "  # deploy, logs, status, restart"
     ;;
 esac

@@ -24,6 +24,7 @@ import chromadb
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
 
@@ -327,7 +328,19 @@ async def health():
     return {"ok": True, "chroma_docs": get_chroma().count()}
 
 
+# ---------------------------------------------------------------
+# Static frontend (served from frontend/dist after `npm run build`)
+# ---------------------------------------------------------------
+
+FRONTEND_DIST = Path(__file__).resolve().parent.parent / "frontend" / "dist"
+if FRONTEND_DIST.exists():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")
+    log.info(f"Serving frontend from {FRONTEND_DIST}")
+else:
+    log.warning(f"Frontend build not found at {FRONTEND_DIST} — run 'npm run build' in frontend/")
+
+
 if __name__ == "__main__":
     import uvicorn
-    log_event("Starting NarvaConnect API on :3000")
+    log_event("Starting NarvaConnect on :3000")
     uvicorn.run(app, host="0.0.0.0", port=3000, log_level="info")
