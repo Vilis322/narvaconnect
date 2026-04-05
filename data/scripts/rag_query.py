@@ -5,12 +5,11 @@ Usage:
     python data/scripts/rag_query.py "Who teaches Data Science?"
 """
 
-import sys
 import argparse
 from pathlib import Path
+
 import chromadb
 from sentence_transformers import SentenceTransformer
-
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 CHROMA_DIR = PROJECT_ROOT / "data" / "chromadb"
@@ -35,6 +34,7 @@ def retrieve_context(question: str, n_results: int = 5) -> list[dict]:
             results["documents"][0],
             results["metadatas"][0],
             results["distances"][0],
+            strict=False,
         ):
             contexts.append({
                 "text": doc,
@@ -96,10 +96,10 @@ def main():
 
     print(f"\nPrompt saved to: {prompt_file}")
     print("\nNow generate with MLX:")
-    print(f'  python -m mlx_lm generate \\')
-    print(f'    --model mlx-community/Meta-Llama-3.1-8B-Instruct-4bit \\')
+    print('  python -m mlx_lm generate \\')
+    print('    --model mlx-community/Meta-Llama-3.1-8B-Instruct-4bit \\')
     print(f'    --prompt "$(cat {prompt_file})" \\')
-    print(f'    --max-tokens 300')
+    print('    --max-tokens 300')
 
 
 if __name__ == "__main__":

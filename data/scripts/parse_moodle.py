@@ -10,10 +10,9 @@ Usage:
 
 import json
 import re
-import os
+from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
-from collections import defaultdict
 
 # ============================================================
 # File parsers — each returns extracted text
@@ -307,7 +306,7 @@ def main():
             f.write(json.dumps(pair, ensure_ascii=False) + "\n")
 
     print(f"\n{'=' * 60}")
-    print(f"  Done!")
+    print("  Done!")
     print(f"  Files found: {len(all_files)}")
     print(f"  Parsed: {stats['parsed']}")
     print(f"  Skipped (binary): {stats['skipped']}")
@@ -317,8 +316,8 @@ def main():
     print(f"  Output: {docs_path}")
     print(f"  Training: {training_path}")
     print(f"{'=' * 60}")
-    print(f"\nTo merge with ois2 training data:")
-    print(f"  cat data/processed/training.jsonl data/processed/moodle_training.jsonl > data/processed/combined_training.jsonl")
+    print("\nTo merge with ois2 training data:")
+    print("  cat data/processed/training.jsonl data/processed/moodle_training.jsonl > data/processed/combined_training.jsonl")
 
 
 if __name__ == "__main__":

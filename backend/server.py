@@ -12,19 +12,19 @@ Usage:
     python backend/server.py
 """
 
-import json
 import asyncio
+import json
 import logging
 import os
 from datetime import datetime
 from pathlib import Path
 from typing import AsyncIterator
 
+import chromadb
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-import chromadb
 from sentence_transformers import SentenceTransformer
 
 # Inference server URL: local MLX (dev) or Cloudflare Tunnel URL (prod)
@@ -214,6 +214,7 @@ def retrieve_context(question: str, n: int = 5) -> list[dict]:
             results["documents"][0],
             results["metadatas"][0],
             results["distances"][0],
+            strict=False,
         ):
             contexts.append({
                 "text": doc,

@@ -9,11 +9,11 @@ Usage:
     python data/scripts/json_to_training.py --input data/processed/ois2_parsed.json --output data/processed/training.jsonl
 """
 
-import json
 import argparse
-from datetime import datetime, timedelta
-from pathlib import Path
+import json
 from collections import defaultdict
+from datetime import datetime
+from pathlib import Path
 
 
 def load_parsed_data(input_path: str) -> dict:
@@ -163,7 +163,7 @@ def generate_deadline_overview(subjects: dict) -> list[dict]:
     pairs = []
 
     all_deadlines = []
-    for code, subject in subjects.items():
+    for _code, subject in subjects.items():
         for event in subject.get("events", []):
             if event.get("type") in ("deadline", "assignment"):
                 all_deadlines.append({
@@ -314,12 +314,12 @@ def main():
 
     print(f"\nTotal training pairs: {len(all_pairs)}")
     print(f"Written to: {output_path}")
-    print(f"\nNext step: MLX LoRA fine-tuning")
-    print(f"  python -m mlx_lm.lora \\")
-    print(f"    --model mlx-community/Meta-Llama-3.1-8B-Instruct-4bit \\")
+    print("\nNext step: MLX LoRA fine-tuning")
+    print("  python -m mlx_lm.lora \\")
+    print("    --model mlx-community/Meta-Llama-3.1-8B-Instruct-4bit \\")
     print(f"    --train-data {output_path} \\")
-    print(f"    --adapter-path data/adapters/narvaconnect-v1 \\")
-    print(f"    --num-epochs 3")
+    print("    --adapter-path data/adapters/narvaconnect-v1 \\")
+    print("    --num-epochs 3")
 
 
 if __name__ == "__main__":

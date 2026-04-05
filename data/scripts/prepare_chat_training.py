@@ -88,13 +88,13 @@ def main():
     # Optimal iters: val loss was best at ~iter 400 last run (5 epochs)
     # With 478 pairs, 5 epochs = 478*5/4 ≈ 600 iters
     iters = len(train) * 5 // 4
-    print(f"\n--- Recommended training (5 epochs, best val loss zone) ---")
-    print(f"python -m mlx_lm lora \\")
-    print(f"  --model mlx-community/Meta-Llama-3.1-8B-Instruct-4bit \\")
+    print("\n--- Recommended training (5 epochs, best val loss zone) ---")
+    print("python -m mlx_lm lora \\")
+    print("  --model mlx-community/Meta-Llama-3.1-8B-Instruct-4bit \\")
     print(f"  --data {OUTPUT_DIR} \\")
-    print(f"  --adapter-path data/adapters/narvaconnect-v3 \\")
+    print("  --adapter-path data/adapters/narvaconnect-v3 \\")
     print(f"  --train --iters {iters} --batch-size 4 --learning-rate 5e-5 \\")
-    print(f"  --steps-per-report 25 --save-every 200")
+    print("  --steps-per-report 25 --save-every 200")
 
 
 if __name__ == "__main__":

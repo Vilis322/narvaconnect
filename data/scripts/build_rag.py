@@ -12,9 +12,9 @@ Usage:
 
 import json
 from pathlib import Path
+
 import chromadb
 from sentence_transformers import SentenceTransformer
-
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"

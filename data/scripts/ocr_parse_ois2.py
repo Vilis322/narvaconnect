@@ -9,14 +9,11 @@ Usage:
     python data/scripts/ocr_parse_ois2.py
 """
 
-import subprocess
 import json
 import re
-import os
+import subprocess
 from datetime import datetime
 from pathlib import Path
-from collections import defaultdict
-
 
 # Path constants
 UNIVERSITY_DIR = Path.home() / "Projects/study/university/year3/semester2"
@@ -186,12 +183,12 @@ def parse_screenshot_text(text: str, subject_folder: str) -> list[dict]:
         # Only create event if we have meaningful data
         if date or time_start or (course_code and event_type != "event"):
             # Clean description: take first meaningful line
-            desc_lines = [l.strip() for l in block.split('\n')
-                         if l.strip() and not l.strip().startswith('Source:')
-                         and not l.strip().startswith('@')
-                         and 'Moodle' not in l
-                         and 'Online link' not in l
-                         and 'Close' not in l]
+            desc_lines = [line.strip() for line in block.split('\n')
+                         if line.strip() and not line.strip().startswith('Source:')
+                         and not line.strip().startswith('@')
+                         and 'Moodle' not in line
+                         and 'Online link' not in line
+                         and 'Close' not in line]
             description = ' '.join(desc_lines[:2]) if desc_lines else None
 
             events.append({
@@ -315,7 +312,7 @@ def main():
         json.dump(raw_texts, f, indent=2, ensure_ascii=False)
 
     print(f"\n{'=' * 60}")
-    print(f"  Done!")
+    print("  Done!")
     print(f"  Screenshots: {len(all_images)}")
     print(f"  Events parsed: {parsed_count}")
     print(f"  Subjects found: {len(subjects)}")
