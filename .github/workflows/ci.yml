@@ -1,0 +1,43 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  backend-lint:
+    name: Backend — Lint & Smoke
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install deps
+        run: pip install ruff fastapi httpx pydantic
+      - name: Lint (ruff)
+        run: ruff check backend/ data/scripts/
+      - name: Smoke — imports
+        run: |
+          cd backend && python -c "import server; print('server imports OK')"
+          cd ../data/scripts && python -c "import json_to_training, parse_moodle, ocr_parse_ois2; print('scripts import OK')"
+
+  frontend-lint:
+    name: Frontend — Lint & Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Install deps
+        working-directory: frontend
+        run: npm install
+      - name: TypeScript check
+        working-directory: frontend
+        run: npx tsc --noEmit
+      - name: Build
+        working-directory: frontend
+        run: npm run build
