@@ -16,7 +16,10 @@ jobs:
         with:
           python-version: "3.13"
       - name: Install deps
-        run: pip install ruff fastapi httpx pydantic
+        run: |
+          pip install ruff
+          pip install -r backend/requirements.txt
+          pip install pymupdf python-docx python-pptx openpyxl pandas faker phonenumbers
       - name: Lint (ruff)
         run: ruff check backend/ data/scripts/
       - name: Smoke — imports
