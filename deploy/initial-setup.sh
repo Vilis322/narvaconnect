@@ -17,10 +17,7 @@ echo ""
 echo "[1/7] Installing system packages..."
 export DEBIAN_FRONTEND=noninteractive
 apt update -qq
-apt install -y -qq software-properties-common curl git nginx
-add-apt-repository -y ppa:deadsnakes/ppa
-apt update -qq
-apt install -y -qq python3.13 python3.13-venv python3.13-dev tesseract-ocr build-essential
+apt install -y -qq curl git nginx python3-venv python3-dev tesseract-ocr build-essential
 
 # Node.js 20
 if ! command -v node &> /dev/null; then
@@ -52,7 +49,7 @@ echo "[2/7] Done"
 # === 3. Python backend ===
 echo "[3/7] Setting up Python backend..."
 cd "${APP_DIR}"
-python3.13 -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -q --upgrade pip
 pip install -q -r backend/requirements.txt
