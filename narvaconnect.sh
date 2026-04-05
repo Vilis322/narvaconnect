@@ -4,6 +4,9 @@
 
 set -e
 
+PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "${PROJECT_ROOT}"
+
 DOMAIN="narvaconnect.app"
 TUNNEL_NAME="narvaconnect-mlx"
 
@@ -11,7 +14,10 @@ case "$1" in
 
   # === Build frontend for production ===
   build)
-    cd frontend && npm run build && cd ..
+    if [ ! -d "frontend/node_modules" ]; then
+      (cd frontend && npm install)
+    fi
+    (cd frontend && npm run build)
     echo "Frontend built to frontend/dist/"
     ;;
 
@@ -39,9 +45,14 @@ case "$1" in
     echo "Starting NarvaConnect stack..."
     source .venv/bin/activate
 
+    if [ ! -d "frontend/node_modules" ]; then
+      echo "Installing frontend deps..."
+      (cd frontend && npm install)
+    fi
+
     if [ ! -d "frontend/dist" ]; then
       echo "Building frontend..."
-      cd frontend && npm run build && cd ..
+      (cd frontend && npm run build)
     fi
 
     python -m mlx_lm server \
@@ -51,7 +62,7 @@ case "$1" in
     echo "MLX server: PID $MLX_PID (port 8080)"
     sleep 3
 
-    python backend/server.py &
+    (cd "${PROJECT_ROOT}" && python backend/server.py) &
     BACKEND_PID=$!
     echo "Backend: PID $BACKEND_PID (port 3000)"
     sleep 2
