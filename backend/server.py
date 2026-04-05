@@ -15,6 +15,7 @@ Usage:
 import json
 import asyncio
 import logging
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import AsyncIterator
@@ -25,6 +26,9 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import chromadb
 from sentence_transformers import SentenceTransformer
+
+# Inference server URL: local MLX (dev) or Cloudflare Tunnel URL (prod)
+MLX_SERVER_URL = os.getenv("MLX_SERVER_URL", "http://localhost:8080")
 
 # ---------------------------------------------------------------
 # Setup
@@ -259,13 +263,13 @@ async def chat_rag(req: ChatRequest):
     import httpx
 
     async def stream_tokens() -> AsyncIterator[str]:
-        log_event("Querying MLX server...")
+        log_event(f"Querying inference server: {MLX_SERVER_URL}")
         token_count = 0
         try:
             async with httpx.AsyncClient(timeout=60) as client:
                 async with client.stream(
                     "POST",
-                    "http://localhost:8080/v1/completions",
+                    f"{MLX_SERVER_URL}/v1/completions",
                     json={
                         "prompt": prompt,
                         "max_tokens": 300,
@@ -286,8 +290,12 @@ async def chat_rag(req: ChatRequest):
                                     yield f"data: {json.dumps({'token': token})}\n\n"
                             except Exception:
                                 continue
+        except httpx.ConnectError:
+            msg = "AI assistant is offline. The inference server is currently unavailable. Try again later."
+            log_event(f"Inference server offline ({MLX_SERVER_URL})")
+            yield f"data: {json.dumps({'token': msg})}\n\n"
         except Exception as e:
-            log_event(f"MLX server error: {e}")
+            log_event(f"Inference error: {e}")
             yield f"data: {json.dumps({'error': str(e)})}\n\n"
 
         log_event(f"Generation done — {token_count} tokens")
