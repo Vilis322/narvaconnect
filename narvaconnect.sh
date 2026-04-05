@@ -1,12 +1,10 @@
 #!/bin/bash
 # narvaconnect.sh — deployment & management commands
 # Usage: ./narvaconnect.sh <command>
-#
-# Setup: SSH_HOST=root@YOUR_IP ./narvaconnect.sh deploy
 
 set -e
 
-SSH_HOST="${SSH_HOST:-root@0.0.0.0}"
+SSH_HOST="${SSH_HOST:-root@64.111.93.12}"
 APP_DIR="/var/www/narvaconnect"
 PM2_NAME="narvaconnect-api"
 DOMAIN="narvaconnect.app"
@@ -14,81 +12,105 @@ DOMAIN="narvaconnect.app"
 case "$1" in
 
   # === LOCAL DEV ===
-  dev)
-    cd backend && npm run start:dev
+  dev-backend)
+    cd backend && python server.py
     ;;
-  front)
+  dev-frontend)
     cd frontend && npm run dev
     ;;
   test)
-    cd backend && npm test
+    ruff check backend/ data/scripts/
+    cd frontend && npx tsc --noEmit
     ;;
   open)
     open "https://${DOMAIN}"
     ;;
 
-  # === SERVER DEPLOY ===
+  # === MLX LOCAL (Apple Silicon only) ===
+  mlx-server)
+    source .venv/bin/activate
+    python -m mlx_lm server \
+      --model mlx-community/Meta-Llama-3.1-8B-Instruct-4bit \
+      --port 8080
+    ;;
+
+  # === Cloudflare Tunnel (exposes local MLX server to narvaconnect.app) ===
+  tunnel)
+    cloudflared tunnel run narvaconnect-mlx
+    ;;
+
+  # === Start MLX + Tunnel together ===
+  ai-up)
+    echo "Starting MLX server and Cloudflare Tunnel..."
+    source .venv/bin/activate
+    python -m mlx_lm server \
+      --model mlx-community/Meta-Llama-3.1-8B-Instruct-4bit \
+      --port 8080 &
+    MLX_PID=$!
+    sleep 3
+    cloudflared tunnel run narvaconnect-mlx &
+    TUNNEL_PID=$!
+    echo "MLX: PID $MLX_PID | Tunnel: PID $TUNNEL_PID"
+    echo "Ctrl+C to stop both"
+    trap "kill $MLX_PID $TUNNEL_PID 2>/dev/null" EXIT
+    wait
+    ;;
+
+  # === DEPLOY ===
   deploy)
     echo "Deploying to ${SSH_HOST}..."
-    ssh ${SSH_HOST} "cd ${APP_DIR} && git pull origin stage && cd backend && npm ci && npm run build && pm2 reload ${PM2_NAME}"
+    ssh "${SSH_HOST}" "cd ${APP_DIR} && git pull origin main && cd backend && pip install -q -r requirements.txt && cd ../frontend && npm ci && npm run build && pm2 reload ${PM2_NAME}"
     echo "Deploy complete."
     ;;
+
+  # === SERVER MANAGEMENT ===
+  logs)
+    ssh "${SSH_HOST}" "pm2 logs ${PM2_NAME} --lines ${2:-50}"
+    ;;
+  status)
+    ssh "${SSH_HOST}" "pm2 status ${PM2_NAME}"
+    ;;
+  restart)
+    ssh "${SSH_HOST}" "pm2 reload ${PM2_NAME}"
+    ;;
+  stop)
+    ssh "${SSH_HOST}" "pm2 stop ${PM2_NAME}"
+    ;;
+
+  # === FIRST DEPLOY (run once on fresh server) ===
   # setup)
-  #   echo "First deploy to ${SSH_HOST}..."
-  #   ssh ${SSH_HOST} "
+  #   echo "Initial setup on ${SSH_HOST}..."
+  #   ssh "${SSH_HOST}" "
+  #     apt update && apt install -y python3.13 python3.13-venv nodejs npm nginx &&
+  #     npm install -g pm2 &&
   #     mkdir -p ${APP_DIR} &&
   #     cd ${APP_DIR} &&
   #     git clone https://github.com/Vilis322/narvaconnect.git . &&
-  #     git checkout stage &&
-  #     cd backend && npm ci && npm run build &&
-  #     pm2 start dist/main.js --name ${PM2_NAME} -i 1 &&
+  #     python3 -m venv .venv && source .venv/bin/activate && pip install -r backend/requirements.txt &&
+  #     cd frontend && npm ci && npm run build && cd .. &&
+  #     pm2 start backend/server.py --name ${PM2_NAME} --interpreter .venv/bin/python &&
   #     pm2 save
   #   "
   #   echo "Setup complete. Configure nginx: nginx/${DOMAIN}.conf.example"
   #   ;;
 
-  # === SERVER MANAGEMENT ===
-  logs)
-    ssh ${SSH_HOST} "pm2 logs ${PM2_NAME} --lines ${2:-50}"
-    ;;
-  status)
-    ssh ${SSH_HOST} "pm2 status ${PM2_NAME}"
-    ;;
-  restart)
-    ssh ${SSH_HOST} "pm2 reload ${PM2_NAME}"
-    ;;
-  stop)
-    ssh ${SSH_HOST} "pm2 stop ${PM2_NAME}"
-    ;;
-
-  # === DATABASE (uncomment when resources available) ===
-  # infra)
-  #   docker compose up -d postgres
-  #   ;;
-  # infra-down)
-  #   docker compose down
-  #   ;;
-  # migrate)
-  #   cd backend && npx prisma migrate dev
-  #   ;;
-
   *)
     echo "narvaconnect.sh — ${DOMAIN}"
     echo ""
-    echo "Local:"
-    echo "  dev        Start backend (NestJS :3001)"
-    echo "  front      Start frontend (React :5173)"
-    echo "  test       Run backend tests"
-    echo "  open       Open ${DOMAIN} in browser"
+    echo "Local dev:"
+    echo "  dev-backend    Start FastAPI (:3000)"
+    echo "  dev-frontend   Start Vite (:5173)"
+    echo "  mlx-server     Start MLX inference server (Apple Silicon only, :8080)"
+    echo "  test           Run lints"
+    echo "  open           Open narvaconnect.app in browser"
     echo ""
-    echo "Deploy:  SSH_HOST=root@IP ./narvaconnect.sh <command>"
-    echo "  setup      Initial server setup (clone, build, PM2)"
-    echo "  deploy     Pull, build, reload PM2"
+    echo "Deploy:  SSH_HOST=root@64.111.93.12 ./narvaconnect.sh <command>"
+    echo "  deploy         Pull, build, reload PM2"
     echo ""
     echo "Server:"
-    echo "  logs [N]   PM2 logs (default 50 lines)"
-    echo "  status     PM2 status"
-    echo "  restart    PM2 reload (zero-downtime)"
-    echo "  stop       PM2 stop"
+    echo "  logs [N]       PM2 logs (default 50)"
+    echo "  status         PM2 status"
+    echo "  restart        PM2 reload"
+    echo "  stop           PM2 stop"
     ;;
 esac
