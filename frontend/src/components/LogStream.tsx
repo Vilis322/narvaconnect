@@ -7,9 +7,9 @@ export default function LogStream() {
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const ws = new WebSocket(
-      `ws://${window.location.hostname}:3000/ws/logs`
-    );
+    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    const host = window.location.host;
+    const ws = new WebSocket(`${protocol}//${host}/ws/logs`);
     ws.onmessage = (e) => {
       try {
         const line: LogLine = JSON.parse(e.data);
