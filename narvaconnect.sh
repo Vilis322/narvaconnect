@@ -34,6 +34,28 @@ case "$1" in
       --port 8080
     ;;
 
+  # === Cloudflare Tunnel (exposes local MLX server to narvaconnect.app) ===
+  tunnel)
+    cloudflared tunnel run narvaconnect-mlx
+    ;;
+
+  # === Start MLX + Tunnel together ===
+  ai-up)
+    echo "Starting MLX server and Cloudflare Tunnel..."
+    source .venv/bin/activate
+    python -m mlx_lm server \
+      --model mlx-community/Meta-Llama-3.1-8B-Instruct-4bit \
+      --port 8080 &
+    MLX_PID=$!
+    sleep 3
+    cloudflared tunnel run narvaconnect-mlx &
+    TUNNEL_PID=$!
+    echo "MLX: PID $MLX_PID | Tunnel: PID $TUNNEL_PID"
+    echo "Ctrl+C to stop both"
+    trap "kill $MLX_PID $TUNNEL_PID 2>/dev/null" EXIT
+    wait
+    ;;
+
   # === DEPLOY ===
   deploy)
     echo "Deploying to ${SSH_HOST}..."
